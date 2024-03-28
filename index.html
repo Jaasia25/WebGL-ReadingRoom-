@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+<head>    
+    <meta charset="utf-8">
+    <title>A Reading Room</title>
+    <style>
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script id="vertexShader" type="x-shader/x-vertex">   
+        varying vec2 vUv;   
+        void main() {
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            vUv = uv;
+        }
+    </script>
+    
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        uniform sampler2D uTexture;
+        varying vec2 vUv;   
+        void main() {          
+            gl_FragColor = texture2D(uTexture, vUv);
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three/examples/js/loaders/GLTFLoader.js"></script>
+    
+    <script> 
+        
+        const sizes = {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        };
+        var camera_angle = {  height: 1.3, speed: 0.025 };
+        var currentTextureIndex = 0;
+        var textures = [
+            "./textures/table_texture.webp",
+            "./textures/table_texture2.webp"
+        ];
+
+        //init function
+        function init() {
+            scene = new THREE.Scene();
+
+            const roomGeometry = new THREE.BoxGeometry(15, 3.7, 15);
+            const wallTexture = new THREE.TextureLoader().load('textures/wall.avif');
+            const floorTexture = new THREE.TextureLoader().load('textures/floor2.webp');
+            const windowTexture = new THREE.TextureLoader().load('textures/window.webp'); // transparent texture for window
+
+            const roomMaterials = [
+                new THREE.ShaderMaterial( {
+                    uniforms: {
+                        uTexture : {
+                            value: wallTexture
+                        }
+                    },
+                    vertexShader: document.getElementById( 'vertexShader' ).textContent,
+                    fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
+                    side: THREE.BackSide
+                }),
+                new THREE.ShaderMaterial( {
+                    uniforms: {
+                        uTexture : {
+                            value: wallTexture
+                        }
+                    },
+                    vertexShader: document.getElementById( 'vertexShader' ).textContent,
+                    fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
+                    side: THREE.BackSide
+                }),new THREE.ShaderMaterial( {
+                    uniforms: {
+                        uTexture : {
+                            value: wallTexture
+                        }
+                    },
+                    vertexShader: document.getElementById( 'vertexShader' ).textContent,
+                    fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
+                    side: THREE.BackSide
+                }),new THREE.ShaderMaterial( {
+                    uniforms: {
+                        uTexture : {
+                            value: floorTexture
+                        }
+                    },
+                    vertexShader: document.getElementById( 'vertexShader' ).textContent,
+                    fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
+                    side: THREE.BackSide
+                }),new THREE.ShaderMaterial( {
+                    uniforms: {
+                        uTexture : {
+                            value: windowTexture
+                        }
+                    },
+                    vertexShader: document.getElementById( 'vertexShader' ).textContent,
+                    fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
+                    side: THREE.BackSide
+                }),new THREE.MeshBasicMaterial( { // transparent material for window
+                    map: wallTexture,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.7 // adjust opacity as needed
+                })
+            ];
+
+            const room = new THREE.Mesh(roomGeometry, roomMaterials);
+            room.position.set(0,1,0);
+            scene.add(room);
+
+
+            camera = new THREE.PerspectiveCamera(100, sizes.width / sizes.height,0.1,1000);
+            //texture loader
+            var texture_floor = new THREE.TextureLoader().load("./textures/floor2.webp");
+            var texture_table = new THREE.TextureLoader().load(textures[currentTextureIndex]);
+
+            texture_floor.wrapS = THREE.RepeatWrapping;
+            texture_floor.wrapT = THREE.RepeatWrapping;
+            texture_floor.repeat.set(5, 5);
+            //Table
+            const table = new THREE.Mesh(
+                new THREE.BoxGeometry(2.5, 0.2, 1.5),
+                new THREE.MeshPhongMaterial({
+                    color: 0xffffff,
+                    map: texture_table
+                })
+            );
+            scene.add(table);
+            table.position.set(0,0.15,0);
+            table.receiveShadow = true;
+            table.castShadow = true;
+
+            // Table legs
+            const legMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff, map: texture_table});
+            const legGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
+
+            const leg1 = new THREE.Mesh(legGeometry, legMaterial);
+            leg1.position.set(-1.2, -0.3, -0.7);
+            scene.add(leg1);
+
+            const leg2 = new THREE.Mesh(legGeometry, legMaterial);
+            leg2.position.set(1.2, -0.3, -0.7);
+            scene.add(leg2);
+
+            const leg3 = new THREE.Mesh(legGeometry, legMaterial);
+            leg3.position.set(-1.2, -0.3, 0.7);
+            scene.add(leg3);
+
+            const leg4 = new THREE.Mesh(legGeometry, legMaterial);
+            leg4.position.set(1.2, -0.3, 0.7);
+            scene.add(leg4);
+
+            //adding the book model
+            // Inside your init function after creating the scene
+            const loader = new THREE.GLTFLoader();
+/*
+            loader.load(
+                './asset/vintage_books.glb',
+                function (gltf) {
+                    const chair = gltf.scene;
+
+                    // Position, scale, or rotate your chair model as needed
+                    chair.position.set(0.0, 0.0, 0.0);
+                    chair.scale.set(1.5, 1.5, 1.5);
+                    //chair.rotation.set(4.5, 1.5, 2);
+
+                    // Add the chair to your scene
+                    scene.add(chair);
+                },
+                undefined,
+                function (error) {
+                    console.error('Error loading GLTF chair model', error);
+                }
+            );*/
+
+
+
+
+            // Book
+            // Define colors for each side of the box
+            const colors = [
+                0x245473, // Right side color (red)
+                0xffffff, // Left side color (green)
+                0x245473, // Top side color (blue)
+                0x0000ff, // Bottom side color (yellow)
+                0xffffff, // Front side color (magenta)
+                0xffffff  // Back side color (cyan)
+            ];
+
+            // Create materials for each side of the box
+            const materials = colors.map(color => new THREE.MeshPhongMaterial({ color }));
+
+            // Create a box geometry
+            const bookGeometry = new THREE.BoxGeometry(0.7, 0.2, 0.6);
+
+            // Apply materials to each side of the box
+            const book1 = new THREE.Mesh(bookGeometry, materials);
+
+            // Position the book on the table
+            book1.position.set(0.5, 0.2, 0.2); // Adjust position as needed
+
+            // Add the book to the table
+            scene.add(book1);
+
+
+            const colors2 = [
+                0xAC1F36, // Right side color (red)
+                0xffffff, // Left side color (green)
+                0xAC1F36, // Top side color (blue)
+                0x0000ff, // Bottom side color (yellow)
+                0xAC1F36, // Front side color (magenta)
+                0xffffff  // Back side color (cyan)
+            ];
+
+            // Create materials for each side of the box
+            const materials2 = colors2.map(color => new THREE.MeshPhongMaterial({ color }));
+
+            // Create a box geometry
+            const bookGeometry2 = new THREE.BoxGeometry(0.7, 0.1, 0.6);
+
+            // Apply materials to each side of the box
+            const book2 = new THREE.Mesh(bookGeometry2, materials2);
+
+            // Position the book on the table
+            book2.position.set(0.5, 0.4, 0.2); // Adjust position as needed
+
+            // Add the book to the table
+            scene.add(book2);
+
+   
+            // Chair seat
+            const chairSeatMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff, map: texture_table });
+            const chairSeatGeometry = new THREE.BoxGeometry(0.7, 0.15, 0.7);
+
+            const chairSeat = new THREE.Mesh(chairSeatGeometry, chairSeatMaterial);
+            chairSeat.position.set(2.0, -0.09, 0);
+            scene.add(chairSeat);
+            chairSeat.receiveShadow = true;
+            chairSeat.castShadow = true;
+
+            // Chair backrest
+            const chairBackrestMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff, map: texture_table });
+            const chairBackrestGeometry = new THREE.BoxGeometry(0.05, 1.5, 0.7);
+
+            const chairBackrest = new THREE.Mesh(chairBackrestGeometry, chairBackrestMaterial);
+            chairBackrest.position.set(2.32, 0.55, -0.01);
+            scene.add(chairBackrest);
+            chairBackrest.receiveShadow = true;
+            chairBackrest.castShadow = true;
+
+
+            const clegGeometry = new THREE.BoxGeometry(0.1, 0.65, 0.1);
+            // Chair legs
+            const chairLeg1 = new THREE.Mesh(clegGeometry, legMaterial);
+            chairLeg1.position.set(1.7, -0.45, -0.31);
+            scene.add(chairLeg1);
+
+            const chairLeg2 = new THREE.Mesh(clegGeometry, legMaterial);
+            chairLeg2.position.set(2.3, -0.45, -0.31);
+            scene.add(chairLeg2);
+
+            const chairLeg3 = new THREE.Mesh(clegGeometry, legMaterial);
+            chairLeg3.position.set(2.3, -0.45, 0.31);
+            scene.add(chairLeg3);
+
+            const chairLeg4 = new THREE.Mesh(clegGeometry, legMaterial);
+            chairLeg4.position.set(1.7, -0.45, 0.31);
+            scene.add(chairLeg4);
+
+            //const initialLightPosition = new THREE.Vector3(0, 6, 4); // Initial position of the light
+
+            // AmbientLight
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+            // PointLight
+            light = new THREE.PointLight(0xffffff, 1, 100);
+            light.castShadow = true;
+            light.shadow.camera.near = 0.5; 
+            light.shadow.camera.far = 10; 
+            light.shadowMapWidth = 1024; 
+            light.shadowMapHeight = 1024;
+            light.shadow.mapSize.width = 1024;
+            light.shadow.mapSize.height = 1024;
+
+            scene.add(light);
+            // Camera
+            camera.position.set(0, camera_angle.height, -3.0);
+            camera.lookAt(new THREE.Vector3(0, camera_angle.height, 0));
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(sizes.width, sizes.height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.setClearColor("skyblue");
+            document.body.appendChild(renderer.domElement);
+            renderer.physicallyCorrectLights = false;
+
+            resizeRendererToDisplaySize(renderer);
+            
+            const canvas = renderer.domElement;
+            camera.aspect = canvas.clientWidth / canvas.clientHeight;
+            camera.updateProjectionMatrix();
+
+            // Add event listener for mouse click
+            canvas.addEventListener('click', onCanvasClick);
+
+            animate();
+        }
+
+        function resizeRendererToDisplaySize(renderer) {
+            const canvas = renderer.domElement;
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            const needResize = canvas.width !== width || canvas.height !== height;
+            if (needResize)
+                renderer.setSize(width, height, false);
+            return needResize;
+        }
+
+        var keyboard = {};
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            moveCamera();
+            rotateLight();
+
+            renderer.render(scene, camera);
+        }
+
+        // Mouse click event handler
+        function onCanvasClick(event) {
+            switch (currentTextureIndex) {
+                case 1:
+                    // Change texture to 'table_texture2.webp'
+                    table.material.map = new THREE.TextureLoader().load("./textures/table_texture2.webp");
+                    currentTextureIndex = 1;
+                    break;
+                case 0:
+                    // Change texture back to 'table_texture.webp'
+                    table.material.map = new THREE.TextureLoader().load("./textures/table_texture.webp");
+                    currentTextureIndex = 0;
+                    break;
+                default:
+                    // Handle additional cases if needed
+                    break;
+            }
+            // Update texture
+            table.material.needsUpdate = true;
+        }
+
+        // Keyboard input event handlers
+        function keyDown(event) {
+            keyboard[event.keyCode] = true;
+        }
+
+        function keyUp(event) {
+            keyboard[event.keyCode] = false;
+        }
+
+        // Camera movement function
+        function moveCamera() {
+            if (keyboard[87]) { // W key (move forward)
+                camera.position.z += camera_angle.speed;
+            }
+            if (keyboard[83]) { // S key (move backward)
+                camera.position.z -= camera_angle.speed;
+            }
+            if (keyboard[65]) { // A key (move left)
+                camera.position.x += camera_angle.speed;
+            }
+            if (keyboard[68]) { // D key (move right)
+                camera.position.x -= camera_angle.speed;
+            }
+        }
+
+        // Light rotation function
+        function rotateLight() {
+            const time = Date.now() * 0.0005;
+            const radius = 6;
+            const x = Math.sin(time) * radius;
+            const z = Math.cos(time) * radius;
+            light.position.set(x, 6, z);
+        }
+
+        // Add event listeners for keyboard input
+        window.addEventListener('keydown', keyDown);
+        window.addEventListener('keyup', keyUp);
+
+        // Start the initialization process once the window has loaded
+        window.onload = init;
+    </script>   
+</body>
+</html>
